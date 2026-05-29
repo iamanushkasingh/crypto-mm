@@ -1,0 +1,30 @@
+# Aggressive config for the synthetic-data smoke test only.
+# Tighter quotes + wider synthetic spread so fills actually happen.
+# Not realistic for live BTC perp — use config.yaml for that.
+
+symbol: BTCUSDT
+quote_venue: binance
+hedge_venue: bybit
+
+quote_size_contracts: 0.010
+max_inventory_contracts: 0.050
+
+queue_position_fraction: 0.0    # demo: assume front of queue so fills happen
+base_depth_bps: 1.0
+min_depth_bps: 0.3
+inventory_skew_bps_per_contract: 30.0
+adverse_selection_buffer_bps: 0.2
+
+requote_alpha_bps_per_sec: 0.3
+quote_max_time_in_book_sec: 4.0
+
+hedge_initial_depth_bps: 0.5
+hedge_timeout_ms: 500
+hedge_size_multiplier: 1.0
+
+fees:
+  binance: {maker_bps: 2.0, taker_bps: 5.0}
+  bybit:   {maker_bps: 1.0, taker_bps: 6.0}
+
+fill_lambda_base: 0.3
+fill_queue_decay_sec: 2.0

@@ -1,0 +1,48 @@
+# Live-paper demo config. Quotes are anchored to the TOUCH (best bid/ask)
+# so the strategy joins the BBO on Binance. Fills happen in seconds-to-minutes,
+# letting you verify the full pipeline (maker fill → hedger → taker fallback)
+# end-to-end on real Binance + Bybit WS feeds.
+#
+# Profitability: not the goal here. Joining the BBO at 0 tick from touch
+# means we're picking up the spread minus fees on each round-trip; with
+# default Binance+Bybit fees that's roughly break-even-to-negative. The
+# point is to *see the engine work* against live data.
+
+symbol: BTCUSDT
+quote_venue: binance
+hedge_venue: bybit
+
+quote_size_contracts: 0.002         # tiny — paper only
+max_inventory_contracts: 0.020
+
+# --- Pricing anchor ---
+quote_anchor: touch        # "touch" anchors to best_bid/best_ask
+ticks_from_touch: 0        # 0 = join BBO, +1 = improve by a tick, -N = N ticks deep
+tick_size: 0.1             # BTC-USDT perp tick size
+
+# --- Fill simulator pessimism ---
+# 0.0 = assume our order is at the front of the queue (optimistic; demo).
+# 1.0 = assume back of the queue behind all reported level size (realistic).
+queue_position_fraction: 0.3
+
+# --- Mid-anchored fallback floor (used only if touch isn't available) ---
+base_depth_bps: 0.5
+min_depth_bps: 0.10
+inventory_skew_bps_per_contract: 80.0
+adverse_selection_buffer_bps: 0.05
+
+requote_alpha_bps_per_sec: 0.05
+quote_max_time_in_book_sec: 3.0
+
+# --- Hedger ---
+hedge_initial_depth_bps: 0.5
+hedge_timeout_ms: 500
+hedge_size_multiplier: 1.0
+
+# --- Fees / rebates ---
+fees:
+  binance: {maker_bps: 2.0, taker_bps: 5.0}
+  bybit:   {maker_bps: 1.0, taker_bps: 6.0}
+
+fill_lambda_base: 0.3
+fill_queue_decay_sec: 2.0

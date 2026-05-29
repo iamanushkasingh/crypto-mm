@@ -1,0 +1,46 @@
+# All numbers are configurable. Defaults below are reasonable starting
+# points for BTC-USDT perps on Binance + Bybit; tune per regime.
+
+# Fill simulator pessimism: 0.0 = front of queue, 1.0 = back. Realistic = 0.3-0.7.
+queue_position_fraction: 0.5
+
+symbol: BTCUSDT
+quote_venue: binance     # where we post maker quotes
+hedge_venue: bybit       # where we hedge the resulting exposure
+
+# --- Sizing ---
+quote_size_contracts: 0.010   # BTC notional per quote (per side)
+max_inventory_contracts: 0.100  # |q| beyond this triggers forced hedge
+
+# --- Quote pricing ---
+base_depth_bps: 4.0       # how far below mid we post the bid (and above for ask)
+min_depth_bps: 0.5        # never re-quote tighter than this
+inventory_skew_bps_per_contract: 8.0   # k in the skew formula
+adverse_selection_buffer_bps: 0.3
+
+# --- Maker → taker transition (quote leg) ---
+requote_alpha_bps_per_sec: 0.5   # how fast the quote walks toward mid
+quote_max_time_in_book_sec: 5.0  # after this we just sit at min_depth
+
+# --- Hedger ---
+hedge_initial_depth_bps: 0.5     # post hedge slightly through the touch
+hedge_timeout_ms: 750            # then cross with taker
+hedge_size_multiplier: 1.0       # 1.0 = exact hedge
+
+# --- Fees / rebates (per side, in bps) ---
+# Binance USDⓈ-M perp VIP 0:   maker  2.0 bps,  taker 5.0 bps
+# Bybit linear perp default:   maker  2.0 bps,  taker 5.5 bps
+# Negative = rebate (Anthropic note: most retail tiers have *no* rebate;
+# rebates exist at VIP / MM-program tiers. We use small positive defaults
+# and let the user override.)
+fees:
+  binance:
+    maker_bps: 2.0
+    taker_bps: 5.0
+  bybit:
+    maker_bps: 1.0
+    taker_bps: 6.0
+
+# --- Fill model ---
+fill_lambda_base: 0.3      # base trade-arrival intensity per second on touch
+fill_queue_decay_sec: 2.0  # half-life of queue depletion estimate

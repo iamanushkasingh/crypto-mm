@@ -1,0 +1,89 @@
+# Profitable cross-exchange MM config (target: positive PnL on real data).
+#
+# Strategy: post quotes 1 tick BEHIND Binance BBO (so each fill earns the
+# spread + 1 tick of price improvement). Use OFI / cross-venue basis to
+# pull the side about to be adverse-selected. Hedge passively on Bybit at
+# the BBO so the hedge leg also earns a rebate when filled. Convert to
+# taker only when inventory is genuinely urgent.
+#
+# Fees assume Binance + Bybit MM-program tiers (negative maker, low taker)
+# — typical for any cross-venue MM that's actually deployed.
+
+quoter_mode: smart
+queue_position_fraction: 0.4
+
+symbol: BTCUSDT
+quote_venue: binance
+hedge_venue: bybit
+tick_size: 0.1
+
+# --- Sizing (base; favourable side gets boosted dynamically) ---
+quote_size_contracts: 0.004
+max_inventory_contracts: 0.045        # bigger cap to absorb favourable-side surges
+
+# --- Quote pricing ---
+ticks_from_touch: -5                  # post 5 ticks BEHIND the touch — only fill on real sweeps
+skew_ticks_per_contract: 100.0
+
+# --- Signal step-back weights ---
+ofi_ticks_per_unit: 35.0              # very defensive step-back
+basis_ticks_per_bp: 20.0
+mr_ticks_per_bp: 5.0                  # mean-reversion: gentler than before
+vol_ticks_per_bps: 0.0
+
+max_stepback_ticks: 50
+pause_signal_threshold: 0.35          # pause aggressively on any signal
+pause_ms_after_toxic: 3500.0          # long pause
+vol_pause_bps: 1.0                    # pause BOTH sides during top ~35% of vol
+basis_hard_pause_bps: 2.5             # skip the disadvantaged side only when basis is genuinely large
+
+# --- Asymmetric "favourable side" sizing ---
+# Favourability_bps per side = signed basis (+ optional MR contribution):
+#   ASK favourable when Binance is RICH (basis > 0).
+#   BID favourable when Binance is CHEAP (basis < 0).
+# When favourable, boost size and tighten depth on that side; when far
+# unfavourable, skip the side entirely.
+size_boost_per_favourable_bp: 0.8     # +80% size per bp of favourability
+max_size_mult: 3.0                    # cap at 3x base size
+depth_tighten_ticks_per_favourable_bp: 0.0   # keep depth constant — tightening just adds adverse selection
+unfavourable_skip_bps: 1.2            # skip a side once its favourability < -1.2 bps
+favourability_use_mr: true
+favourability_mr_weight: 0.4          # weight MR contribution at 40% of basis weight
+
+# --- Drawdown circuit breaker ---
+# If running PnL drops by > dd_halt_usd over dd_window_sec, halt for dd_halt_ms.
+dd_window_sec: 120.0
+dd_halt_usd: 8.0
+dd_halt_ms: 90000.0
+
+# --- Signal engine knobs ---
+ofi_window_ms: 2500.0                 # longer OFI horizon
+ofi_normalizer: 1.0
+mean_revert_halflife_sec: 8.0         # EWMA halflife for the MR signal
+vol_halflife_sec: 30.0
+
+# --- Hedger (maker-first, EXTREMELY patient when inventory low) ---
+hedge_initial_depth_bps: 0.5
+hedge_timeout_ms: 1500
+hedge_timeout_low_inv_ms: 180000     # 3 MINUTES of patience at low inv
+hedge_urgent_inv_fraction: 0.90      # urgent only when inv is near cap
+hedge_size_multiplier: 1.0
+hedge_maker_at_touch: true
+no_hedge_below_fraction: 0.75        # internal hedging until 75% of max — favorable side fills should naturally flatten
+
+# --- Required by base modules ---
+base_depth_bps: 1.0
+min_depth_bps: 0.5
+max_depth_bps: 30.0
+inventory_skew_bps_per_contract: 40.0
+requote_alpha_bps_per_sec: 0.5
+quote_max_time_in_book_sec: 5.0
+adverse_selection_buffer_bps: 0.3
+
+# --- Fees (MM-program tier — both rebates, low takers) ---
+fees:
+  binance: {maker_bps: -1.0, taker_bps: 1.7}
+  bybit:   {maker_bps: -0.5, taker_bps: 2.5}
+
+fill_lambda_base: 0.3
+fill_queue_decay_sec: 2.0
